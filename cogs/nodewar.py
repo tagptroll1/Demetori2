@@ -39,8 +39,13 @@ class Nodewar:
         await ctx.message.delete()
         self.stored_embeds[ctx.channel.id] = await ctx.channel.get_message(id)
 
-    @commands.command()
-    async def change_url(self, ctx, *, url):
+##------------------EDIT-----
+    @commands.group(invoke_without_command=True)
+    async def edit(self, ctx):
+        pass
+
+    @edit.command(name="url")
+    async def edit_url(self, ctx, *, url):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
@@ -51,8 +56,8 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
-    async def change_title(self, ctx, *, title):
+    @edit.command(name="title")
+    async def edit_title(self, ctx, *, title):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
@@ -60,8 +65,8 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
-    async def change_description(self, ctx, *, desc):
+    @edit.command(name="description")
+    async def edit_description(self, ctx, *, desc):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
@@ -69,8 +74,8 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
-    async def change_thumbnail(self, ctx, *, url):
+    @edit.command(name="thumbnail")
+    async def edit_thumbnail(self, ctx, *, url):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
@@ -78,8 +83,8 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
-    async def change_image(self, ctx, *, url):
+    @edit.command(name="image")
+    async def edit_image(self, ctx, *, url):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
@@ -87,8 +92,8 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
-    async def change_author(self, ctx, *, authorname):
+    @edit.command(name="author")
+    async def edit_author(self, ctx, *, authorname):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
@@ -96,7 +101,12 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
+##-------------------TOGGLE----------
+    @commands.group(invoke_without_command=True)
+    async def toggle(self, ctx):
+        pass
+
+    @toggle.command(name="timestamp")
     async def toggle_timestamp(self, ctx):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
@@ -105,7 +115,12 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
+##---------------------ADD-----------
+    @commands.group(invoke_without_command=True)
+    async def add(self, ctx):
+        pass
+
+    @add.command(name="field")
     async def add_field(self, ctx, title, *, field):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
@@ -114,7 +129,12 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
+##-------------REMOVE-----------
+    @commands.group(invoke_without_command=True)
+    async def remove(self, ctx):
+        pass
+
+    @remove.command(name="field")    
     async def remove_field(self, ctx, index:int):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
@@ -123,7 +143,12 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-    @commands.command()
+##--------------CLEAR-----------
+    @commands.group(invoke_without_command=True)
+    async def clear(self, ctx):
+        pass
+
+    @clear.command(name="field")
     async def clear_fields(self, ctx):
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
