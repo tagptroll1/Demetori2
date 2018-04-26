@@ -15,6 +15,7 @@ class Nodewar:
 
     def has_embed(self, id):
         try:
+            #print(self.stored_embeds[id].content)
             return self.stored_embeds[id]
         except KeyError:
             return None
@@ -40,13 +41,17 @@ class Nodewar:
 
     @commands.command()
     async def set_embed(self, ctx, id:int):
-        """Sets which embed is in focus for editing, and other checks"""
+        """Sets which embed is in focus"""
         
         await ctx.message.delete()
-        self.stored_embeds[ctx.channel.id] = await ctx.channel.get_message(id)
+        copy = await ctx.channel.get_message(id)
+        settings = copy.embeds[0].to_dict()
+        nw_box = CustomizableNodewar(self.bot, ctx, set_embed=copy)
+        await nw_box.edit_param(**settings)
+        self.stored_embeds[ctx.channel.id] = nw_box
 
 ##------------------EDIT-----
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def edit(self, ctx):
         """Parent command for editing embed"""
         pass
@@ -139,7 +144,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
 ##-------------------TOGGLE----------
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def toggle(self, ctx):
         """Parent command for toggling in embed"""
         pass
@@ -158,7 +163,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
 ##---------------------ADD-----------
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def add(self, ctx):
         """Parent command for adding to embed"""
         pass
@@ -174,12 +179,12 @@ class Nodewar:
         await ctx.message.delete()
         embed = self.has_embed(ctx.channel.id)
         if embed:
-            await embed.add_field(title, field)
+            await embed.add_field(title, field, send=True)
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
 ##-------------REMOVE-----------
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def remove(self, ctx):
         """Parent command for removing in embed"""
         pass
@@ -198,13 +203,15 @@ class Nodewar:
         else:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
-##--------------CLEAR-----------
-    @commands.group(invoke_without_command=True)
-    async def clear(self, ctx):
-        """Parent command for clearing in embed"""
-        pass
+    @remove.command(name="image")
+    async def remove_image(self, ctx):
+        await ctx.message.delete()
+        embed = self.has_embed(ctx.channel.id)
+        if embed:
+            await embed.change_image(discord.Embed.Empty)
 
-    @clear.command(name="field")
+##--------------CLEAR-----------
+    @commands.command(name="field")
     async def clear_fields(self, ctx):
         """Sub-Command for clearing all fields in embed
         
@@ -223,53 +230,36 @@ class Nodewar:
         pass
 
     @preset.command()
-    async def mandatory(self, ctx):
+    async def nodewar(self, ctx):
         """Sub-Command for creating a preset embed for mandatory NW
         
         ?preset mandatory"""
 
         param = {
-                "title": "Nodewars information",
-                "description": f"{ctx.guild.name}'s mandatory nodewar information",
+                "title": f"{ctx.guild.name}s Nodewars information",
+                "description": "-------------------------------------",
                 "color": discord.Color.red(),
                 "footer": {
                     "text": f"Created by {ctx.author.display_name}",
-                    "url": ctx.author.avatar_url
+                    "icon_url": ctx.author.avatar_url
                 },
                  "author": {
                     "name": self.get_CET(),
-                    "url": ctx.guild.icon_url},
-                "fields": [("<:__:437440834150072331> Mandatory Nodewar", "*Contact an officer \nif you're absent!*", True)]
+                    "icon_url": ctx.guild.icon_url}
                  }
         await ctx.message.delete()
         nw_box = CustomizableNodewar(self.bot, ctx)
         self.stored_embeds[ctx.channel.id] = nw_box
+        absent_str = "*if you're absent!*".center(27)
+        await nw_box.add_field("<:__:437440834150072331> Nodewar absence",
+                               f"**You are expected to attend!\n...\tOR DEATH!\n**\n{'*Contact an officer*'.center(27)} \n{absent_str}",
+                               inline=True)
+        await nw_box.add_teamspeak()
+        await nw_box.add_field("\u200b","\u200b",inline=False)
+        await nw_box.add_items()
         await nw_box.display(**param)
 
-    @preset.command()
-    async def optional(self, ctx):
-        """Sub-Command for creating a preset optional NW embed
-        
-        ?preset optional"""
-        
-        param = {
-                "title": "Nodewars information",
-                "description": f"{ctx.guild.name}'s optional nodewar information",
-                "color": discord.Color.green(),
-                "footer":{
-                    "text":f"Created by {ctx.author.display_name}",
-                    "url": ctx.author.avatar_url
-                },
-                "author": {
-                    "name": self.get_CET(),
-                    "url": ctx.guild.icon_url},
-                "fields": [("<:__:437441228821233666> Optional Nodewar", "*Count as half of \na mandatory nodewar.*", True)]
-            }
-        await ctx.message.delete()
-        nw_box = CustomizableNodewar(self.bot, ctx)
-        self.stored_embeds[ctx.channel.id] = nw_box
-        await nw_box.display(**param)
-
+  
 
 def setup(bot):
     bot.add_cog(Nodewar(bot))
