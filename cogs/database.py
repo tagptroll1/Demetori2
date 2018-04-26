@@ -11,6 +11,7 @@ class Database:
 
 
     @commands.command()
+    @commands.has_role("Officer")
     async def clear_absence(self, ctx, member:discord.Member=None):
         """Give it a user to clear all his absence, or no user to clear everything"""
         if member:
@@ -32,6 +33,7 @@ class Database:
         pass
 
     @commands.command(name="absence")
+    @commands.has_role("Member")
     async def insert_absence(self, ctx, *,reason):
         """Add an absence to the data base with your ID, reason and timestamp"""
 
@@ -44,10 +46,12 @@ class Database:
         await self.bot.db.release(connection)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.has_role("Member")
     async def update(self, ctx):
         pass
 
     @update.command(name="gear")
+    @commands.has_role("Member")
     async def update_gear(self, ctx, member: discord.Member, ap: int, aap: int, dp: int, level: int, c_class, url=None):
         """Required: @Member, Ap, AAP, DP, Level, Class
         Optional: Url for gear pic"""
@@ -89,10 +93,12 @@ class Database:
             await self.bot.db.release(connection)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.has_role("Member")
     async def get(self, ctx):
         pass
 
     @get.group(name="member")
+    @commands.has_role("Officer")
     async def get_user(self, ctx, member:discord.Member=None):
         query = "SELECT * FROM absence WHERE userid = $1;"
         if not member:
@@ -107,6 +113,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
     @get.group(name="all")
+    @commands.has_role("Officer")
     async def get_all(self, ctx):
         query = "SELECT * FROM absence ORDER BY userid, excuse"
         fetched = await self.bot.db.fetch(query)
@@ -120,8 +127,8 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
 
-    # Example commands, don't use them
     @get.command(name="gear")
+    @commands.has_role("Member")
     async def get_gear(self, ctx, member:discord.Member=None):
         query = "SELECT * FROM members WHERE id = $1;"
         if member == None:

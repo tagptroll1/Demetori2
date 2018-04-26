@@ -80,8 +80,9 @@ class Bot(commands.Bot):
                 "cogs.officer",
                 "cogs.rolemanager",
                 "cogs.database",
+                "cogs.everyone",
                 "cogs.nodewar"]
-#"cogs.database",
+
         for extension in cogs:
             try:
                 self.load_extension(extension)
