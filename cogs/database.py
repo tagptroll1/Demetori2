@@ -14,6 +14,8 @@ class Database:
     @commands.has_role("Officer")
     async def clear_absence(self, ctx, member:discord.Member=None):
         """Give it a user to clear all his absence, or no user to clear everything"""
+
+        await ctx.message.delete()
         if member:
             query = f"DELETE FROM absence WHERE userid = {member.id}"
         else:
@@ -23,9 +25,9 @@ class Database:
             await connection.execute(query)
         
         if member:
-            await ctx.send(f"Deleted all absence from {member.display_name}")
+            await ctx.send(f"Deleted all absence from {member.display_name}", delete_after=5)
         else:
-            await ctx.send("Deleted all absence from database")
+            await ctx.send("Deleted all absence from database", delete_after=5)
         await self.bot.db.release(connection)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
@@ -37,12 +39,13 @@ class Database:
     async def insert_absence(self, ctx, *,reason):
         """Add an absence to the data base with your ID, reason and timestamp"""
 
+        await ctx.message.delete()
         today = datetime.datetime.today().strftime("%d/%m")
         query = "INSERT INTO absence(userid, excuse) VALUES ($1, $2);"
         connection = await self.bot.db.acquire()
         async with connection.transaction():
             await connection.execute(query, ctx.author.id, f"{today} : {reason}")
-        await ctx.author.send("Your absence has been registered! Don't forget to message an officer about it")
+        await ctx.send("Your absence has been registered!", delete_after=5)
         await self.bot.db.release(connection)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
@@ -115,6 +118,8 @@ class Database:
     @get.group(name="all")
     @commands.has_role("Officer")
     async def get_all(self, ctx):
+        
+        await ctx.message.delete()
         query = "SELECT * FROM absence ORDER BY userid, excuse"
         fetched = await self.bot.db.fetch(query)
         absence_list = ""

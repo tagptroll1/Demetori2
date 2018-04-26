@@ -271,7 +271,7 @@ class Nodewar:
         self.stored_embeds[ctx.channel.id] = nw_box
         absent_str = "*if you're absent!*".center(27)
         await nw_box.add_field("<:__:437440834150072331> Nodewar absence",
-                               f"**You are expected to attend!\n...\tOR DEATH!\n**\n{'*Contact an officer*'.center(27)} \n{absent_str}",
+                               f"**You are expected to attend!\n...\tOR DEATH!\n**\n{'*#absence_channel if you cant attend*'.center(27)} \n{absent_str}",
                                inline=True)
         await nw_box.add_teamspeak()
         await nw_box.add_field("\u200b","\u200b",inline=False)
