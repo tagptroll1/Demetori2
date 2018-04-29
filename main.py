@@ -20,9 +20,25 @@ async def run():
     db = await asyncpg.create_pool(**credentials)
 
     # Example create table code, you'll probably change it to suit you
-    await db.execute("CREATE TABLE IF NOT EXISTS guilds(id bigint PRIMARY KEY, guild_name text);")
-    await db.execute("CREATE TABLE IF NOT EXISTS members(id bigint PRIMARY KEY, guild_id bigint, ap INTEGER, aap INTEGER, dp INTEGER, level INTEGER, class text, gearpic text);")
-    await db.execute("CREATE TABLE IF NOT EXISTS absence(id SERIAL PRIMARY KEY, userid bigint, excuse text);")
+    await db.execute("""CREATE TABLE IF NOT EXISTS guilds(
+        id bigint PRIMARY KEY, 
+        guild_name text);""")
+
+    await db.execute("""CREATE TABLE IF NOT EXISTS members(
+        id bigint PRIMARY KEY, 
+        guild_id bigint, 
+        ap INTEGER, 
+        aap INTEGER, 
+        dp INTEGER, 
+        level INTEGER, 
+        class text, 
+        gearpic text);""")
+
+    await db.execute("""CREATE TABLE IF NOT EXISTS absence(
+        id SERIAL PRIMARY KEY, 
+        date date, 
+        userid bigint, 
+        excuse text);""")
     
     bot_param = {"description": desc,
                 "db": db,

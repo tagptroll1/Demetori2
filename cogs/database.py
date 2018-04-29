@@ -40,13 +40,18 @@ class Database:
         """Add an absence to the data base with your ID, reason and timestamp"""
 
         await ctx.message.delete()
-        today = datetime.datetime.today().strftime("%d/%m")
-        query = "INSERT INTO absence(userid, excuse) VALUES ($1, $2);"
+        today = datetime.date.today()
+        query = "INSERT INTO absence(userid, date, excuse) VALUES ($1, $2, $3);"
         connection = await self.bot.db.acquire()
         async with connection.transaction():
-            await connection.execute(query, ctx.author.id, f"{today} : {reason}")
+            await connection.execute(query, ctx.author.id, today, reason)
         await ctx.send("Your absence has been registered!", delete_after=5)
         await self.bot.db.release(connection)
+
+        opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
+        if opt_in:
+            for member in opt_in.members:
+                await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.has_role("Member")
@@ -98,7 +103,21 @@ class Database:
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.has_role("Member")
     async def get(self, ctx):
-        pass
+        await ctx.message.delete()
+
+        timestamp = datetime.date.today()
+        query = """SELECT * FROM absence 
+        WHERE date = $1 
+        ORDER BY date, userid;"""
+        fetched = await self.bot.db.fetch(query, timestamp)
+        absence_list = ""
+        for row in fetched:
+            member = discord.utils.get(ctx.guild.members, id=row["userid"])
+            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+        absenceembed = discord.Embed()
+        absenceembed.title = f"All absence logged today"
+        absenceembed.description = absence_list if fetched else "No absence logged"
+        await ctx.author.send(embed=absenceembed)
 
     @get.group(name="member")
     @commands.has_role("Officer")
@@ -109,7 +128,7 @@ class Database:
         fetched = await self.bot.db.fetch(query, member.id)
         absence_list = ""
         for row in fetched:
-            absence_list += f"{row['excuse'][5:]} - {member.display_name} {row['excuse'][5:]}\n"
+            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name} {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.set_author(name=member.display_name, icon_url=member.avatar_url)
         absenceembed.description = absence_list
@@ -120,17 +139,88 @@ class Database:
     async def get_all(self, ctx):
         
         await ctx.message.delete()
-        query = "SELECT * FROM absence ORDER BY userid, excuse"
+        query = "SELECT * FROM absence ORDER BY date, userid;"
         fetched = await self.bot.db.fetch(query)
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
-            absence_list += f"{row['excuse'][:5]} - {member.display_name}: {row['excuse'][6:]}\n"
+            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.title="All absence"
-        absenceembed.description = absence_list
+        absenceembed.description = absence_list if fetched else "No absence logged"
         await ctx.author.send(embed=absenceembed)
 
+    @get.group(name="after")
+    @commands.has_role("Officer")
+    async def get_after(self, ctx, delta):
+        await ctx.message.delete()
+        if not(len(delta) == 10 and delta[2] == "-" and delta[5]== "-"):
+            await ctx.send("Wrong format for date, valid format is: 'dd-mm-yyyy'")
+            return
+
+        timestamp = datetime.datetime.strptime(delta, "%d-%m-%Y")
+        query = """SELECT * FROM absence 
+        WHERE date >= $1 
+        ORDER BY date, userid;"""
+        fetched = await self.bot.db.fetch(query, timestamp)
+        absence_list = ""
+        for row in fetched:
+            member = discord.utils.get(ctx.guild.members, id=row["userid"])
+            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+        absenceembed = discord.Embed()
+        absenceembed.title = f"All absence after {delta}"
+        absenceembed.description = absence_list if fetched else "No absence logged"
+        await ctx.author.send(embed=absenceembed)
+
+    @get.group(name="before")
+    @commands.has_role("Officer")
+    async def get_before(self, ctx, delta):
+        await ctx.message.delete()
+        if not(len(delta) == 10 and delta[2] == "-" and delta[5] == "-"):
+            await ctx.send("Wrong format for date, valid format is: 'dd-mm-yyyy'")
+            return
+
+        timestamp = datetime.datetime.strptime(delta, "%d-%m-%Y")
+        query = """SELECT * FROM absence 
+        WHERE date <= $1 
+        ORDER BY date, userid;"""
+        fetched = await self.bot.db.fetch(query, timestamp)
+        absence_list = ""
+        for row in fetched:
+            member = discord.utils.get(ctx.guild.members, id=row["userid"])
+            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+        absenceembed = discord.Embed()
+        absenceembed.title = f"All absence before {delta}"
+        absenceembed.description = absence_list if fetched else "No absence logged"
+        await ctx.author.send(embed=absenceembed)
+        
+    @get.group(name="between")
+    @commands.has_role("Officer")
+    async def get_between(self, ctx, first, last):
+        await ctx.message.delete()
+        if not(len(first) == 10 and first[2] == "-" and first[5] == "-"):
+            await ctx.send("Wrong format for first date, valid format is: 'dd-mm-yyyy'")
+            return
+
+        if not(len(last) == 10 and last[2] == "-" and last[5] == "-"):
+            await ctx.send("Wrong format for last date, valid format is: 'dd-mm-yyyy'")
+            return
+
+        date1 = datetime.datetime.strptime(first, "%d-%m-%Y")
+        date2 = datetime.datetime.strptime(last, "%d-%m-%Y")
+        query = """SELECT * FROM absence 
+        WHERE date BETWEEN 
+        $1 AND $2 
+        ORDER BY date, userid;"""
+        fetched = await self.bot.db.fetch(query, date1, date2)
+        absence_list = ""
+        for row in fetched:
+            member = discord.utils.get(ctx.guild.members, id=row["userid"])
+            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+        absenceembed = discord.Embed()
+        absenceembed.title = f"All absence between {first} and {last}"
+        absenceembed.description = absence_list if fetched else "No absence logged"
+        await ctx.author.send(embed=absenceembed)
 
     @get.command(name="gear")
     @commands.has_role("Member")
@@ -138,26 +228,29 @@ class Database:
         query = "SELECT * FROM members WHERE id = $1;"
         if member == None:
             member = ctx.author
-        # This returns a asyncpg.Record object, which is similar to a dict
+
         row = await self.bot.db.fetchrow(query, member.id)
 
         userembed = discord.Embed()
-        userembed.set_author(name=member.display_name, icon_url=member.avatar_url)
-        userembed.colour = discord.Color.green()
-        gear_stats = f"""
-__AP__:    {row["ap"]}
-__AAP__: {row["aap"]}
-__DP__:    {row["dp"]} 
-__Lvl__:    {row["level"]}
-__Class__: {row["class"]}
-        """
-        userembed.add_field(name="Stats:", value=gear_stats, inline=False)
-        if row["gearpic"]:
-            try:
-                userembed.set_image(url=row["gearpic"])
-            except Exception:
-                pass
+        if row["gearpic"] and row["gearpic"].startswith("http"):
+            userembed.set_author(name=member.display_name, icon_url=member.avatar_url , url=row["gearpic"])
+        else:
+            userembed.set_author(name=member.display_name, icon_url=member.avatar_url)
 
+        if int(row["level"]) >= 61:
+            userembed.colour = discord.Color.green()
+        elif int(row["level"]) == 60:
+            userembed.colour = discord.Color.orange()
+        elif int(row["level"]) <= 59:
+            userembed.colour = discord.Color.red()
+
+        renown = ((int(row["ap"]) + int(row["aap"])) // 2) + int(row["dp"])
+        renown_s = f"*Renown score {renown}*"# if not row["gearpic"] else f"*Renown score {renown}* \t [[Gear Link]({row['gearpic']})]"
+        userembed.add_field(name=f"Level {row['level']} {row['class']}", value=renown_s, inline=False)
+        userembed.add_field(name="AP", value=row['ap'], inline=True)
+        userembed.add_field(name="Awakening AP", value=row['aap'], inline=True)
+        userembed.add_field(name="DP", value=row['dp'], inline=True)
+        userembed.set_footer(text="Click members username for a picture of gear, if available")
         await ctx.send(embed=userembed)
 
 def setup(bot):

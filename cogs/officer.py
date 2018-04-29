@@ -88,5 +88,17 @@ class Officer:
                     await message.delete()
         await ctx.send("Done!", delete_after=5)
 
+    @commands.command(hidden=False, name="optin")
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def opt_in(self, ctx):
+        opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
+        if not opt_in:
+            opt_in = await ctx.guild.create_role(name="Opt-in")
+
+        if not discord.utils.get(ctx.author.roles, name="Opt-in"):
+            await ctx.author.add_roles(opt_in)
+            await ctx.send("You've opted in for absence pings")
+
 def setup(bot):
     bot.add_cog(Officer(bot))
