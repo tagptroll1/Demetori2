@@ -53,6 +53,25 @@ class Database:
             for member in opt_in.members:
                 await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
 
+    @commands.command(name="manual_absence")
+    @commands.has_role("Member")
+    async def insert_absence_manual(self, ctx, member:discord.Member, *, reason):
+        """Add an absence to the data based on member tagged, reason and timestamp"""
+
+        await ctx.message.delete()
+        today = datetime.date.today()
+        query = "INSERT INTO absence(userid, date, excuse) VALUES ($1, $2, $3);"
+        connection = await self.bot.db.acquire()
+        async with connection.transaction():
+            await connection.execute(query, member.id, today, reason)
+        await ctx.send("Your absence has been registered!", delete_after=5)
+        await self.bot.db.release(connection)
+
+        opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
+        if opt_in:
+            for member in opt_in.members:
+                await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
+
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.has_role("Member")
     async def update(self, ctx):
@@ -128,7 +147,8 @@ class Database:
         fetched = await self.bot.db.fetch(query, member.id)
         absence_list = ""
         for row in fetched:
-            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name} {row['excuse']}\n"
+            if member:
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name} {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.set_author(name=member.display_name, icon_url=member.avatar_url)
         absenceembed.description = absence_list
@@ -144,7 +164,8 @@ class Database:
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
-            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+            if member:
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.title="All absence"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -166,7 +187,8 @@ class Database:
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
-            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+            if member:
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence after {delta}"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -188,7 +210,8 @@ class Database:
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
-            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+            if member:
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence before {delta}"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -216,7 +239,8 @@ class Database:
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
-            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+            if member:
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence between {first} and {last}"
         absenceembed.description = absence_list if fetched else "No absence logged"
