@@ -3,3 +3,5 @@ asyncpg
 Cryptodome
 psutil
 pytz
+yarl==1.1.1
+aiohttp<3.0.0

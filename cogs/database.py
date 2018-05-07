@@ -14,10 +14,6 @@ class Database:
         self.key = var.ENCRYPT_KEY
         self.aes = AES.new(self.key, AES.MODE_ECB)
 
-    def pad(self, text):
-        while len(text) % 8 != 0:
-            text += " "
-        return text
 
     @commands.command()
     @commands.has_role("Officer")
