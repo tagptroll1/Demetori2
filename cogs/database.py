@@ -3,12 +3,21 @@ from discord.ext import commands
 import asyncio
 import asyncpg
 import datetime
+import constants as var
+from Cryptodome.Cipher import AES
+from Cryptodome.Util import Padding
 
 class Database:
     """Cog for handling database related commands"""
     def __init__(self, bot):
         self.bot = bot
+        self.key = var.ENCRYPT_KEY
+        self.aes = AES.new(self.key, AES.MODE_ECB)
 
+    def pad(self, text):
+        while len(text) % 8 != 0:
+            text += " "
+        return text
 
     @commands.command()
     @commands.has_role("Officer")
@@ -38,13 +47,15 @@ class Database:
     @commands.has_role("Member")
     async def insert_absence(self, ctx, *,reason):
         """Add an absence to the data base with your ID, reason and timestamp"""
+        b_reason = Padding.pad(bytes(reason, "utf-8"), 16)
+        enc_msg = self.aes.encrypt(b_reason)
 
         await ctx.message.delete()
         today = datetime.date.today()
         query = "INSERT INTO absence(userid, date, excuse) VALUES ($1, $2, $3);"
         connection = await self.bot.db.acquire()
         async with connection.transaction():
-            await connection.execute(query, ctx.author.id, today, reason)
+            await connection.execute(query, ctx.author.id, today, enc_msg)
         await ctx.send("Your absence has been registered!", delete_after=5)
         await self.bot.db.release(connection)
 
@@ -58,12 +69,15 @@ class Database:
     async def insert_absence_manual(self, ctx, member:discord.Member, *, reason):
         """Add an absence to the data based on member tagged, reason and timestamp"""
 
+        b_reason = Padding.pad(bytes(reason, "utf-8"), 16)
+        enc_msg = self.aes.encrypt(b_reason)
+
         await ctx.message.delete()
         today = datetime.date.today()
         query = "INSERT INTO absence(userid, date, excuse) VALUES ($1, $2, $3);"
         connection = await self.bot.db.acquire()
         async with connection.transaction():
-            await connection.execute(query, member.id, today, reason)
+            await connection.execute(query, member.id, today, enc_msg)
         await ctx.send("Your absence has been registered!", delete_after=5)
         await self.bot.db.release(connection)
 
@@ -132,7 +146,10 @@ class Database:
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
-            absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+            if member:
+                excuse = self.aes.decrypt(row["excuse"])
+                excuse = Padding.unpad(excuse, 16).decode("utf-8")
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {excuse}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence logged today"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -148,7 +165,9 @@ class Database:
         absence_list = ""
         for row in fetched:
             if member:
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name} {row['excuse']}\n"
+                excuse = self.aes.decrypt(row["excuse"])
+                excuse = Padding.unpad(excuse, 16).decode("utf-8")
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name} {excuse}\n"
         absenceembed = discord.Embed()
         absenceembed.set_author(name=member.display_name, icon_url=member.avatar_url)
         absenceembed.description = absence_list
@@ -165,7 +184,9 @@ class Database:
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
             if member:
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+                excuse = self.aes.decrypt(row["excuse"])
+                excuse = Padding.unpad(excuse, 16).decode("utf-8")
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {excuse}\n"
         absenceembed = discord.Embed()
         absenceembed.title="All absence"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -188,7 +209,9 @@ class Database:
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
             if member:
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+                excuse = self.aes.decrypt(row["excuse"])
+                excuse = Padding.unpad(excuse, 16).decode("utf-8")
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {excuse}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence after {delta}"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -211,7 +234,9 @@ class Database:
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
             if member:
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+                excuse = self.aes.decrypt(row["excuse"])
+                excuse = Padding.unpad(excuse, 16).decode("utf-8")
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {excuse}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence before {delta}"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -240,7 +265,9 @@ class Database:
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
             if member:
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {row['excuse']}\n"
+                excuse = self.aes.decrypt(row["excuse"])
+                excuse = Padding.unpad(excuse, 16)
+                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {str(excuse)}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence between {first} and {last}"
         absenceembed.description = absence_list if fetched else "No absence logged"

@@ -38,7 +38,7 @@ async def run():
         id SERIAL PRIMARY KEY, 
         date date, 
         userid bigint, 
-        excuse text);""")
+        excuse bytea);""")
     
     bot_param = {"description": desc,
                 "db": db,
