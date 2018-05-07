@@ -138,11 +138,3 @@ if __name__ == "__main__":
 
 
 
-#async with aiohttp.ClientSession() as cs:
-#    async with cs.get('http://random.cat/meow') as r:
-#        res = await r.json()
-#        await client.send_message(channel, res['file'])
-#
-#
-#For more help, see aiohttp's documentation: http://aiohttp.readthedocs.io/en/stable/
-
