@@ -1,12 +1,84 @@
 import discord
 from discord.ext import commands
-
+import asyncio
 
 class Officer:
     """Cog for officer related commands"""
 
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.group(invoke_without_command=True)
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def announce(self, ctx, *, text):
+        """Creates a sleek looking embed for announcements"""
+        await ctx.message.delete()
+        embed = discord.Embed(title="Announcement")
+        embed.description = text
+        embed.colour = discord.Colour.red()
+        await ctx.send(embed=embed)
+
+    @announce.group(name="green", invoke_without_command=True)
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def green_announce(self, ctx, *, text):
+        """Creates a sleek looking embed for announcements, THATS GREEN!"""
+        await ctx.message.delete()
+        embed = discord.Embed(title="Announcement")
+        embed.description = text
+        embed.colour = discord.Colour.green()
+        await ctx.send(embed=embed)
+
+    @green_announce.command(name="title")
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def green_announce_title(self, ctx, *, text):
+        """Creates a sleek looking embed for announcements, THATS GREEN! with custom title"""
+        await ctx.message.delete()
+        await ctx.send("Respond with a title for the announcement! *(15 sec time)*", delete_after=15)
+
+        def pred(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        try:
+            msg = await self.bot.wait_for("message", check=pred, timeout=15.0)
+        except asyncio.TimeoutError:
+            await ctx.send("Using default title...", delete_after=5)
+            title = "Announcement"
+        else:
+            title = msg.content
+        await msg.delete()
+
+        embed = discord.Embed(title=title)
+        embed.description = text
+        embed.colour = discord.Colour.green()
+        await ctx.send(embed=embed)
+
+    @announce.command(name="title")
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def announce_title(self, ctx, *, text):
+        """Creates a sleek looking embed for announcements, THATS GREEN! with custom title"""
+        await ctx.message.delete()
+        await ctx.send("Respond with a title for the announcement! *(15 sec time)*", delete_after=15)
+
+        def pred(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        try:
+            msg = await self.bot.wait_for("message", check=pred, timeout=15.0)
+        except asyncio.TimeoutError:
+            await ctx.send("Using default title...", delete_after=5)
+            title = "Announcement"
+        else:
+            title = msg.content
+        await msg.delete()
+
+        embed = discord.Embed(title=title)
+        embed.description = text
+        embed.colour = discord.Colour.red()
+        await ctx.send(embed=embed)
 
     @commands.command(hidden=False)
     @commands.guild_only()
