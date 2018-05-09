@@ -29,6 +29,7 @@ class Nodewar:
         return tomorrow.strftime(fmt)
         
     @commands.command()
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def nodewars(self, ctx):
         """Creates a blank nodewar embed with teamspeak, and few other presets
@@ -41,6 +42,7 @@ class Nodewar:
         await nw_box.display()
 
     @commands.command()
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def set_embed(self, ctx, id:int):
         """Sets which embed is in focus"""
@@ -54,12 +56,14 @@ class Nodewar:
 
 ##------------------EDIT-----
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit(self, ctx):
         """Parent command for editing embed"""
         pass
 
     @edit.command(name="url")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit_url(self, ctx, *, url):
         """Sub-Command for editing url of embed, url applies to thumbnail and title
@@ -78,6 +82,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @edit.command(name="title")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit_title(self, ctx, *, title):
         """Sub-Command for editing title of embed
@@ -93,6 +98,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @edit.command(name="description")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit_description(self, ctx, *, desc):
         """Sub-Command for editing description in embed
@@ -108,6 +114,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @edit.command(name="thumbnail")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit_thumbnail(self, ctx, *, url):
         """Sub-Command for editing thumbnail in embed
@@ -123,6 +130,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @edit.command(name="image")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit_image(self, ctx, *, url):
         """Sub-Command for editing image in embed
@@ -138,6 +146,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @edit.command(name="author")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def edit_author(self, ctx, *, authorname):
         """Sub-Command for editing author in embed
@@ -154,12 +163,14 @@ class Nodewar:
 
 ##-------------------TOGGLE----------
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def toggle(self, ctx):
         """Parent command for toggling in embed"""
         pass
 
     @toggle.command(name="timestamp")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def toggle_timestamp(self, ctx):
         """Sub-Command for toggeling timestamps
@@ -175,12 +186,14 @@ class Nodewar:
 
 ##---------------------ADD-----------
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def add(self, ctx):
         """Parent command for adding to embed"""
         pass
 
     @add.command(name="field")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def add_field(self, ctx, title, *, field):
         """Sub-Command for adding a field to embed
@@ -198,12 +211,14 @@ class Nodewar:
 
 ##-------------REMOVE-----------
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def remove(self, ctx):
         """Parent command for removing in embed"""
         pass
 
     @remove.command(name="field") 
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def remove_field(self, ctx, index:int):
         """Sub-Command for deleting a field in embed
@@ -219,6 +234,7 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @remove.command(name="image")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def remove_image(self, ctx):
         await ctx.message.delete()
@@ -228,6 +244,7 @@ class Nodewar:
 
 ##--------------CLEAR-----------
     @commands.command(name="field")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def clear_fields(self, ctx):
         """Sub-Command for clearing all fields in embed
@@ -242,12 +259,14 @@ class Nodewar:
             await ctx.send("No embed stored for this channel to edit", delete_after=10)
 
     @commands.group(invoke_without_command=True)
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def preset(self, ctx):
         """Parent command for creating pre-made nodewar embeds"""
         pass
 
     @preset.command()
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def nodewar(self, ctx):
         """Sub-Command for creating a preset embed for mandatory NW

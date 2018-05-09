@@ -16,6 +16,7 @@ class Database:
 
 
     @commands.command()
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def clear_absence(self, ctx, member:discord.Member=None):
         """Give it a user to clear all his absence, or no user to clear everything"""
@@ -36,10 +37,12 @@ class Database:
         await self.bot.db.release(connection)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     async def insert(self, ctx):
         pass
 
     @commands.command(name="absence")
+    @commands.guild_only()
     @commands.has_role("Member")
     async def insert_absence(self, ctx, *,reason):
         """Add an absence to the data base with your ID, reason and timestamp"""
@@ -61,6 +64,7 @@ class Database:
                 await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
 
     @commands.command(name="manual_absence")
+    @commands.guild_only()
     @commands.has_role("Member")
     async def insert_absence_manual(self, ctx, member:discord.Member, *, reason):
         """Add an absence to the data based on member tagged, reason and timestamp"""
@@ -83,11 +87,13 @@ class Database:
                 await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     @commands.has_role("Member")
     async def update(self, ctx):
         pass
 
     @update.command(name="gear")
+    @commands.guild_only()
     @commands.has_role("Member")
     async def update_gear(self, ctx, member: discord.Member, ap: int, aap: int, dp: int, level: int, c_class, url=None):
         """Required: @Member, Ap, AAP, DP, Level, Class
@@ -130,6 +136,7 @@ class Database:
             await self.bot.db.release(connection)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.guild_only()
     @commands.has_role("Member")
     async def get(self, ctx):
         await ctx.message.delete()
@@ -152,6 +159,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
     @get.group(name="member")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def get_user(self, ctx, member:discord.Member=None):
         query = "SELECT * FROM absence WHERE userid = $1;"
@@ -170,6 +178,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
     @get.group(name="all")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def get_all(self, ctx):
         
@@ -189,6 +198,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
     @get.group(name="after")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def get_after(self, ctx, delta):
         await ctx.message.delete()
@@ -214,6 +224,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
     @get.group(name="before")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def get_before(self, ctx, delta):
         await ctx.message.delete()
@@ -239,6 +250,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
         
     @get.group(name="between")
+    @commands.guild_only()
     @commands.has_role("Officer")
     async def get_between(self, ctx, first, last):
         await ctx.message.delete()
@@ -270,6 +282,7 @@ class Database:
         await ctx.author.send(embed=absenceembed)
 
     @get.command(name="gear")
+    @commands.guild_only()
     @commands.has_role("Member")
     async def get_gear(self, ctx, member:discord.Member=None):
         query = "SELECT * FROM members WHERE id = $1;"

@@ -13,6 +13,12 @@ class Everyone:
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command()
+    @commands.guild_only()
+    async def dornier(self, ctx):
+        await ctx.send("This does nothing")
+
+    @commands.guild_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def info(self, ctx):
         param = {"title": "A Black desert online discord bot",
@@ -64,11 +70,12 @@ class Everyone:
 # - created at
 # - id
 
-
+    @commands.guild_only()
     @commands.group(invoke_without_command=True)
     async def meme(self, ctx):
         pass
 
+    @commands.guild_only()
     @meme.command(name="chucknorris", aliases=["chuck", "chuck_norris"])
     async def chuck_norris(self, ctx):
         async with aiohttp.ClientSession() as cs:
@@ -81,6 +88,7 @@ class Everyone:
 
                 await ctx.send(embed=embed)
 
+    @commands.guild_only()
     @meme.command(name="ronswanson", aliases=["ron", "ron_swanson"])
     async def ron_swanson(self, ctx):
         async with aiohttp.ClientSession() as cs:
@@ -93,6 +101,7 @@ class Everyone:
 
                 await ctx.send(embed=embed)
 
+    @commands.guild_only()
     @meme.command(name="xkcd")
     async def xkcd_meme(self, ctx):
         xkcdid = random.randint(1, 1900)
@@ -105,14 +114,19 @@ class Everyone:
 
                 await ctx.send(embed=embed)
 
+
+    @commands.guild_only()
     @commands.command()
     async def say(self, ctx, *, msg):
+        await ctx.message.delete()
         await ctx.send(msg)
 
+    @commands.guild_only()
     @commands.command()
     async def ping(self, ctx):
         await ctx.send("Pong!")
 
+    @commands.guild_only()
     @commands.command()
     async def pong(self, ctx):
         await ctx.send("Ping!")

@@ -1,6 +1,6 @@
 -U git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]
 asyncpg
-Cryptodome
+pycryptodome
 psutil
 pytz
 yarl==1.1.1
