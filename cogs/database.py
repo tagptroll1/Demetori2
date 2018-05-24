@@ -14,6 +14,21 @@ class Database:
         self.key = var.ENCRYPT_KEY
         self.aes = AES.new(self.key, AES.MODE_ECB)
 
+    @staticmethod
+    def dateify(date):
+        format_string = f"%d{date[2]}%m"
+        if len(date) == 8:
+            format_string += f"{date[5]}%y"
+        elif len(date) == 10:
+            format_string += f"{date[5]}%Y"
+        
+        try:
+            return datetime.datetime.strptime(date, format_string)
+        except ValueError:
+            return None
+
+
+
 
     @commands.command()
     @commands.guild_only()
@@ -26,6 +41,27 @@ class Database:
             query = f"DELETE FROM absence WHERE userid = {member.id}"
         else:
             query = "DELETE FROM absence"
+            bots_msg = await ctx.send("Are you sure you want to delete all absence?")
+            await bots_msg.add_reaction("👍")
+            await bots_msg.add_reaction("👎")
+
+            def check(r, u):
+                if u != ctx.author:
+                    return False
+                if str(r) != "👍" and str(r) != "👎":
+                    return False
+                return True
+
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", 
+                        timeout = 30, check=check)
+            except asyncio.TimeoutError:
+                await bots_msg.delete()
+            else:
+                if str(reaction) == "👎":
+                    await bots_msg.delete()
+                    return
+
         connection = await self.bot.db.acquire()
         async with connection.transaction():
             await connection.execute(query)
@@ -43,29 +79,80 @@ class Database:
 
     @commands.command(name="absence")
     @commands.guild_only()
-    @commands.has_role("Member")
-    async def insert_absence(self, ctx, *,reason):
-        """Add an absence to the data base with your ID, reason and timestamp"""
-        b_reason = Padding.pad(bytes(reason, "utf-8"), 16)
-        enc_msg = self.aes.encrypt(b_reason)
+    async def insert_absence(self, ctx, date, *,reason):
+        """Add an absence to the database with your ID, reason, date and timestamp
+        
+        We support the following date formats:
+            dd/mm/yyyy  |  dd/mm/yy  |  dd/mm
+            dd.mm.yyyy  |  dd.mm.yy  |  dd.mm
+        To give a date from/to add a `-` between 2 dates without spacing
 
-        await ctx.message.delete()
-        today = datetime.date.today()
-        query = "INSERT INTO absence(userid, date, excuse) VALUES ($1, $2, $3);"
-        connection = await self.bot.db.acquire()
-        async with connection.transaction():
-            await connection.execute(query, ctx.author.id, today, enc_msg)
-        await ctx.send("Your absence has been registered!", delete_after=5)
-        await self.bot.db.release(connection)
+        Examples of use:
+        ?absence 22/03/2018 I got work that day
+        ?absence 03/05/18 My dog need to go to the vet
+        ?absence 01/05 National day  
+        ?absence 10/05/2018-20/05/2018  going away on holidays :)"""
 
-        opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
-        if opt_in:
-            for member in opt_in.members:
-                await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
+        
+        if "-" in date:
+            date = date.split("-")
+            try:
+                absent_from = Database.dateify(date[0])
+                absent_to = Database.dateify(date[1])
+            except IndexError:
+                await ctx.send("Index error, '-' most likely used incorrectly!")
+        else:
+            date = Database.dateify(date)
+            absent_from = date
+            absent_to = date
+
+        if date is not None:
+            b_reason = Padding.pad(bytes(reason, "utf-8"), 16)
+            enc_msg = self.aes.encrypt(b_reason)
+
+            await ctx.message.delete()
+            today = datetime.date.today()
+            query = """INSERT INTO absence(
+                posted, 
+                userid, 
+                guildid, 
+                excuse, 
+                absentfrom, 
+                absentto) 
+                VALUES ($1, $2, $3, $4, $5, $6);"""
+            connection = await self.bot.db.acquire()
+            async with connection.transaction():
+                await connection.execute(query, 
+                        today,
+                        ctx.author.id,
+                        ctx.guild.id,
+                        enc_msg,
+                        absent_from,
+                        absent_to)
+            await ctx.send("Your absence has been registered!", delete_after=5)
+            await self.bot.db.release(connection)
+
+            opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
+            if opt_in:
+                for member in opt_in.members:
+                    await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
+
+        else:
+            await ctx.send("""Could not find a date, we support the following date formats:
+            dd/mm/yyyy  |  dd/mm/yy  |  dd/mm
+            dd.mm.yyyy  |  dd.mm.yy  |  dd.mm
+            To give a date from/to add a `-` between 2 dates without spacing
+            
+            Examples:
+            22/03/2018
+            03/05/18
+            01/04
+            10/05/2018-20/05/2018""")
+            return
 
     @commands.command(name="manual_absence")
     @commands.guild_only()
-    @commands.has_role("Member")
+    @commands.has_role("Officer")
     async def insert_absence_manual(self, ctx, member:discord.Member, *, reason):
         """Add an absence to the data based on member tagged, reason and timestamp"""
 
@@ -162,6 +249,7 @@ class Database:
     @commands.guild_only()
     @commands.has_role("Officer")
     async def get_user(self, ctx, member:discord.Member=None):
+        # TODO implement this f"{a[:77]+'...' if len(a) >= 80 else a :<80}"
         query = "SELECT * FROM absence WHERE userid = $1;"
         if not member:
             member = ctx.author
@@ -171,7 +259,11 @@ class Database:
             if member:
                 excuse = self.aes.decrypt(row["excuse"])
                 excuse = Padding.unpad(excuse, 16).decode("utf-8")
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name} {excuse}\n"
+                from_date = row['absentfrom'].strftime("%d/%m")
+                to_date = row['absentto'].strftime("%d/%m")
+                date = from_date if from_date == to_date else f"{from_date}-{to_date}"
+                a_s = f"{date} - {member.display_name}: {excuse}\n"
+                absence_list += f"{a_s[:72]+'...' if len(a_s) >= 75 else a_s :<75}"
         absenceembed = discord.Embed()
         absenceembed.set_author(name=member.display_name, icon_url=member.avatar_url)
         absenceembed.description = absence_list

@@ -34,12 +34,24 @@ async def run():
         class text, 
         gearpic text);""")
 
-    await db.execute("""CREATE TABLE IF NOT EXISTS absence(
-        id SERIAL PRIMARY KEY, 
-        date date, 
-        userid bigint, 
-        excuse bytea);""")
+    # Old absence db
+    #await db.execute("""CREATE TABLE IF NOT EXISTS absence(
+    #    id SERIAL PRIMARY KEY, 
+    #    date date, 
+    #    userid bigint, 
+    #    excuse bytea);""")
     
+    await db.execute("""CREATE TABLE IF NOT EXISTS absence(
+        id SERIAL PRIMARY KEY,
+        posted date,
+        userid bigint,
+        guildid bigint,
+        excuse bytea,
+        absentfrom date,
+        absentto date);""")
+
+
+
     bot_param = {"description": desc,
                 "db": db,
                 "activity": discord.Game(name="with Professor"),
