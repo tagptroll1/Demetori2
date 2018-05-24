@@ -140,16 +140,16 @@ class Database:
         else:
             await ctx.send("""Could not find a date, we support the following date formats:
             ```
-            dd/mm/yyyy  |  dd/mm/yy  |  dd/mm
-            dd.mm.yyyy  |  dd.mm.yy  |  dd.mm
-
-            To give a date from/to add a `-` between 2 dates without spacing
-            
-            Examples:
-            22/03/2018
-            03/05/18
-            01/04
-            10/05/2018-20/05/2018```""")
+    |  dd/mm/yyyy  |  dd/mm/yy  |  dd/mm  |
+    |  dd.mm.yyyy  |  dd.mm.yy  |  dd.mm  |
+```
+To give a date from/to add a `-` between 2 dates without spacing
+```
+Examples:
+22/03/2018
+03/05/18
+01/04
+10/05/2018-20/05/2018```""")
             return
 
     @commands.command(name="manual_absence")
