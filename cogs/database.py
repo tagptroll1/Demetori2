@@ -139,15 +139,17 @@ class Database:
 
         else:
             await ctx.send("""Could not find a date, we support the following date formats:
+            ```
             dd/mm/yyyy  |  dd/mm/yy  |  dd/mm
             dd.mm.yyyy  |  dd.mm.yy  |  dd.mm
+
             To give a date from/to add a `-` between 2 dates without spacing
             
             Examples:
             22/03/2018
             03/05/18
             01/04
-            10/05/2018-20/05/2018""")
+            10/05/2018-20/05/2018```""")
             return
 
     @commands.command(name="manual_absence")
@@ -250,7 +252,7 @@ class Database:
     @commands.has_role("Officer")
     async def get_user(self, ctx, member:discord.Member=None):
         # TODO implement this f"{a[:77]+'...' if len(a) >= 80 else a :<80}"
-        query = "SELECT * FROM absence WHERE userid = $1;"
+        query = "SELECT * FROM absence WHERE userid = $1 ORDER BY absentfrom DESC;"
         if not member:
             member = ctx.author
         fetched = await self.bot.db.fetch(query, member.id)
@@ -262,11 +264,11 @@ class Database:
                 from_date = row['absentfrom'].strftime("%d/%m")
                 to_date = row['absentto'].strftime("%d/%m")
                 date = from_date if from_date == to_date else f"{from_date}-{to_date}"
-                a_s = f"{date} - {member.display_name}: {excuse}\n"
-                absence_list += f"{a_s[:72]+'...' if len(a_s) >= 75 else a_s :<75}"
+                a_s = f"{date} - {member.display_name}: {excuse}"
+                absence_list += f"{a_s[:62]+'...' if len(a_s) >= 65 else a_s :<65}\n"
         absenceembed = discord.Embed()
         absenceembed.set_author(name=member.display_name, icon_url=member.avatar_url)
-        absenceembed.description = absence_list
+        absenceembed.description = absence_list[:2000]
         await ctx.author.send(embed=absenceembed)
 
     @get.group(name="all")
