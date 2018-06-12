@@ -7,6 +7,24 @@ import constants as var
 from Cryptodome.Cipher import AES
 from Cryptodome.Util import Padding
 
+error_incorrect_date_format = """
+Could not find a date, we support the following date formats:
+```
+    |  dd/mm/yyyy  |  dd/mm/yy  |  dd/mm  |
+    |  dd.mm.yyyy  |  dd.mm.yy  |  dd.mm  |
+```
+
+To give a date from/to add a `-` between 2 dates without spacing
+
+```
+Examples:
+22/03/2018
+03/05/18
+01/04
+10/05/2018-20/05/2018```"""
+
+
+
 class Database:
     """Cog for handling database related commands"""
     def __init__(self, bot):
@@ -17,6 +35,9 @@ class Database:
     @staticmethod
     def dateify(date):
         format_string = f"%d{date[2]}%m"
+        if len(date) == 5:
+            date += f"{date[2]}{datetime.datetime.today().strftime('%y')}"
+
         if len(date) == 8:
             format_string += f"{date[5]}%y"
         elif len(date) == 10:
@@ -27,7 +48,12 @@ class Database:
         except ValueError:
             return None
 
-
+    @staticmethod
+    def slice_string(string):
+        if len(string) >= 65:
+            return string[:62]+"..."
+        else:
+            return string
 
 
     @commands.command()
@@ -71,6 +97,24 @@ class Database:
         else:
             await ctx.send("Deleted all absence from database", delete_after=5)
         await self.bot.db.release(connection)
+
+    @commands.group(invoke_without_command=True)
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def delete(self, ctx, ab_id:int=None):
+        if ab_id is None:
+            return
+        await ctx.message.delete()
+
+        query = """DELETE FROM absence
+        WHERE id = $1"""
+
+        connection = await self.bot.db.acquire()
+        async with connection.transaction():
+            await connection.execute(query, ab_id)
+
+        await ctx.send(f"Deleted absence with id {ab_id}", delete_after=5)
+
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.guild_only()
@@ -122,13 +166,14 @@ class Database:
                 VALUES ($1, $2, $3, $4, $5, $6);"""
             connection = await self.bot.db.acquire()
             async with connection.transaction():
-                await connection.execute(query, 
-                        today,
-                        ctx.author.id,
-                        ctx.guild.id,
-                        enc_msg,
-                        absent_from,
-                        absent_to)
+                await connection.execute(
+                    query, 
+                    today,
+                    ctx.author.id,
+                    ctx.guild.id,
+                    enc_msg,
+                    absent_from,
+                    absent_to)
             await ctx.send("Your absence has been registered!", delete_after=5)
             await self.bot.db.release(connection)
 
@@ -138,48 +183,81 @@ class Database:
                     await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
 
         else:
-            await ctx.send("""Could not find a date, we support the following date formats:
-            ```
-    |  dd/mm/yyyy  |  dd/mm/yy  |  dd/mm  |
-    |  dd.mm.yyyy  |  dd.mm.yy  |  dd.mm  |
-```
-To give a date from/to add a `-` between 2 dates without spacing
-```
-Examples:
-22/03/2018
-03/05/18
-01/04
-10/05/2018-20/05/2018```""")
+            await ctx.send(error_incorrect_date_format)
             return
 
     @commands.command(name="manual_absence")
     @commands.guild_only()
     @commands.has_role("Officer")
-    async def insert_absence_manual(self, ctx, member:discord.Member, *, reason):
-        """Add an absence to the data based on member tagged, reason and timestamp"""
+    async def insert_absence_manual(self, ctx, member:discord.Member, date, *, reason):
+        """Add an absence to the database with your ID, reason, date and timestamp
+        
+        We support the following date formats:
+            dd/mm/yyyy  |  dd/mm/yy  |  dd/mm
+            dd.mm.yyyy  |  dd.mm.yy  |  dd.mm
+        To give a date from/to add a `-` between 2 dates without spacing
 
-        b_reason = Padding.pad(bytes(reason, "utf-8"), 16)
-        enc_msg = self.aes.encrypt(b_reason)
+        Examples of use:
+        ?absence 22/03/2018 I got work that day
+        ?absence 03/05/18 My dog need to go to the vet
+        ?absence 01/05 National day  
+        ?absence 10/05/2018-20/05/2018  going away on holidays :)"""
 
-        await ctx.message.delete()
-        today = datetime.date.today()
-        query = "INSERT INTO absence(userid, date, excuse) VALUES ($1, $2, $3);"
-        connection = await self.bot.db.acquire()
-        async with connection.transaction():
-            await connection.execute(query, member.id, today, enc_msg)
-        await ctx.send("Your absence has been registered!", delete_after=5)
-        await self.bot.db.release(connection)
+        if "-" in date:
+            date = date.split("-")
+            try:
+                absent_from = Database.dateify(date[0])
+                absent_to = Database.dateify(date[1])
+            except IndexError:
+                await ctx.send("Index error, '-' most likely used incorrectly!")
+        else:
+            date = Database.dateify(date)
+            absent_from = date
+            absent_to = date
 
-        opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
-        if opt_in:
-            for member in opt_in.members:
-                await member.send(f"{ctx.author.display_name} has added an absence: {reason}")
+        if date is not None:
+            b_reason = Padding.pad(bytes(reason, "utf-8"), 16)
+            enc_msg = self.aes.encrypt(b_reason)
+
+            await ctx.message.delete()
+            today = datetime.date.today()
+            query = """INSERT INTO absence(
+                posted, 
+                userid, 
+                guildid, 
+                excuse, 
+                absentfrom, 
+                absentto) 
+                VALUES ($1, $2, $3, $4, $5, $6);"""
+            connection = await self.bot.db.acquire()
+            async with connection.transaction():
+                await connection.execute(
+                    query,
+                    today,
+                    member.id,
+                    ctx.guild.id,
+                    enc_msg,
+                    absent_from,
+                    absent_to)
+            await ctx.send(f"{member.display_name}s absence has been registered!", delete_after=5)
+            await self.bot.db.release(connection)
+
+            opt_in = discord.utils.get(ctx.guild.roles, name="Opt-in")
+            if opt_in:
+                for opters in opt_in.members:
+                    await opters.send(f"{ctx.author.display_name} has manualy added {member.display_name}s absence: {reason}")
+
+        else:
+            await ctx.send(error_incorrect_date_format)
+            return
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.guild_only()
     @commands.has_role("Member")
     async def update(self, ctx):
         pass
+
+
 
     @update.command(name="gear")
     @commands.guild_only()
@@ -208,8 +286,8 @@ Examples:
             await ctx.send(f"Not a valid class, list over valid classes are:\n{classes}")
             return
 
-        query = "SELECT * FROM members WHERE id = $1;"
-        if await self.bot.db.fetchrow(query, member.id):
+        query = "SELECT * FROM members WHERE id = $1 AND guildid = $2;"
+        if await self.bot.db.fetchrow(query, member.id, ctx.guild.id):
             update = """UPDATE members 
             SET ap = $1, aap = $2, dp = $3, level = $4, class = $5, gearpic = $6
             WHERE id = $7;"""
@@ -232,16 +310,28 @@ Examples:
 
         timestamp = datetime.date.today()
         query = """SELECT * FROM absence 
-        WHERE date = $1 
-        ORDER BY date, userid;"""
-        fetched = await self.bot.db.fetch(query, timestamp)
+        WHERE date = $1 AND guildid = $2
+        ORDER BY id DESC;"""
+        fetched = await self.bot.db.fetch(query, timestamp, ctx.guild.id)
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
             if member:
                 excuse = self.aes.decrypt(row["excuse"])
                 excuse = Padding.unpad(excuse, 16).decode("utf-8")
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {excuse}\n"
+                ab_id = row["id"]
+                from_date = row['absentfrom'].strftime("%d/%m")
+                to_date = row['absentto'].strftime("%d/%m")
+
+                if from_date == to_date:
+                    date = from_date
+                else:
+                    date = f"{from_date}-{to_date}"
+
+                a_s = f"{ab_id} | {date} - {member.display_name}: {excuse}"
+                a_s = Database.slice_string(a_s)
+                if len(absence_list) + len(a_s) > 2000: break
+                absence_list += f"{a_s:<65}\n"
         absenceembed = discord.Embed()
         absenceembed.title = f"All absence logged today"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -250,26 +340,68 @@ Examples:
     @get.group(name="member")
     @commands.guild_only()
     @commands.has_role("Officer")
-    async def get_user(self, ctx, member:discord.Member=None):
-        # TODO implement this f"{a[:77]+'...' if len(a) >= 80 else a :<80}"
-        query = "SELECT * FROM absence WHERE userid = $1 ORDER BY absentfrom DESC;"
-        if not member:
-            member = ctx.author
-        fetched = await self.bot.db.fetch(query, member.id)
+    async def get_user(self, ctx, member:discord.Member):
+        query = """SELECT * FROM absence 
+        WHERE userid = $1 AND guildid = $2
+        ORDER BY id DESC;"""
+
+        fetched = await self.bot.db.fetch(query, member.id, ctx.guild.id)
         absence_list = ""
         for row in fetched:
-            if member:
-                excuse = self.aes.decrypt(row["excuse"])
-                excuse = Padding.unpad(excuse, 16).decode("utf-8")
-                from_date = row['absentfrom'].strftime("%d/%m")
-                to_date = row['absentto'].strftime("%d/%m")
-                date = from_date if from_date == to_date else f"{from_date}-{to_date}"
-                a_s = f"{date} - {member.display_name}: {excuse}"
-                absence_list += f"{a_s[:62]+'...' if len(a_s) >= 65 else a_s :<65}\n"
+            excuse = self.aes.decrypt(row["excuse"])
+            excuse = Padding.unpad(excuse, 16).decode("utf-8")
+            ab_id = row["id"]
+            from_date = row['absentfrom'].strftime("%d/%m")
+            to_date = row['absentto'].strftime("%d/%m")
+
+            if from_date == to_date:
+                date = from_date
+            else:
+                date = f"{from_date}-{to_date}"
+
+            a_s = f"{ab_id} | {date} - {member.display_name}: {excuse}"
+            a_s = Database.slice_string(a_s)
+            if len(absence_list) + len(a_s) > 2000: break
+            absence_list += f"{a_s:<65}\n"
         absenceembed = discord.Embed()
         absenceembed.set_author(name=member.display_name, icon_url=member.avatar_url)
         absenceembed.description = absence_list[:2000]
         await ctx.author.send(embed=absenceembed)
+
+    @get.group(name="id")
+    @commands.guild_only()
+    @commands.has_role("Officer")
+    async def get_id(self, ctx, ab_id:int):
+        query = """SELECT * FROM absence 
+        WHERE id = $1 AND guildid = $2"""
+
+        await ctx.message.delete()
+
+        fetched = await self.bot.db.fetchrow(query, ab_id, ctx.guild.id)
+        if not fetched:
+            await ctx.send("Couldn't find an absence with the id: {ab_id}")
+            return
+
+        member = discord.utils.get(ctx.guild.members, id=fetched["userid"])
+        excuse = self.aes.decrypt(fetched["excuse"])
+        excuse = Padding.unpad(excuse, 16).decode("utf-8")
+        ab_id = fetched["id"]
+        from_date = fetched['absentfrom'].strftime("%d/%m/%Y")
+        to_date = fetched['absentto'].strftime("%d/%m/%Y")
+
+        if from_date == to_date:
+            date = from_date
+        else:
+            date = f"{from_date}-{to_date}"
+
+        a_s = f"Absence id: {ab_id}\nDate: {date}\nExcuse: {excuse}"
+        absenceembed = discord.Embed()
+        absenceembed.set_author(name=member.display_name,
+                                icon_url=member.avatar_url)
+        absenceembed.description = a_s[:2000]
+        await ctx.author.send(embed=absenceembed)
+
+
 
     @get.group(name="all")
     @commands.guild_only()
@@ -277,15 +409,30 @@ Examples:
     async def get_all(self, ctx):
         
         await ctx.message.delete()
-        query = "SELECT * FROM absence ORDER BY date, userid;"
-        fetched = await self.bot.db.fetch(query)
+        query = """SELECT * FROM absence 
+        WHERE guildid = $1
+        ORDER BY posted DESC, userid;"""
+        fetched = await self.bot.db.fetch(query, ctx.guild.id)
         absence_list = ""
         for row in fetched:
             member = discord.utils.get(ctx.guild.members, id=row["userid"])
             if member:
                 excuse = self.aes.decrypt(row["excuse"])
                 excuse = Padding.unpad(excuse, 16).decode("utf-8")
-                absence_list += f"{row['date'].strftime('%A %d-%m')} - {member.display_name}: {excuse}\n"
+                ab_id = row["id"]
+                from_date = row['absentfrom'].strftime("%d/%m")
+                to_date = row['absentto'].strftime("%d/%m")
+
+                if from_date == to_date:
+                    date = from_date
+                else:
+                    date = f"{from_date}-{to_date}"
+
+                a_s = f"{ab_id} | {date} - {member.display_name}: {excuse}"
+                a_s = Database.slice_string(a_s)
+
+                if len(absence_list) + len(a_s) > 2000: break
+                absence_list += f"{a_s:<65}\n"
         absenceembed = discord.Embed()
         absenceembed.title="All absence"
         absenceembed.description = absence_list if fetched else "No absence logged"
@@ -379,11 +526,11 @@ Examples:
     @commands.guild_only()
     @commands.has_role("Member")
     async def get_gear(self, ctx, member:discord.Member=None):
-        query = "SELECT * FROM members WHERE id = $1;"
+        query = "SELECT * FROM members WHERE id = $1 AND guild_id = $2;"
         if member == None:
             member = ctx.author
 
-        row = await self.bot.db.fetchrow(query, member.id)
+        row = await self.bot.db.fetchrow(query, member.id, ctx.guild.id)
 
         userembed = discord.Embed()
         if row["gearpic"] and row["gearpic"].startswith("http"):

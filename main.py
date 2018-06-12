@@ -82,7 +82,8 @@ class Bot(commands.Bot):
         self.manager_role = kwargs.pop("manager")
 
     async def track_start(self):
-        """
+        """Ready Check and timestamper
+
         Waits for the bot to connect to discord and then records the time.
         Can be used to work out uptime.
         """
@@ -90,6 +91,7 @@ class Bot(commands.Bot):
         self.start_time = datetime.datetime.utcnow()
 
     async def create_bot_manager(self, guild):
+        """Creates the role needed to manage bot settings"""
         role_settings = {"name": self.manager_role,
                         "permissions": discord.Permissions.all(),
                         "hoist": False,
@@ -98,8 +100,9 @@ class Bot(commands.Bot):
         await guild.create_role(**role_settings)
 
     async def load_all_extensions(self):
-        """
-        Attempts to load all cogs
+        """Attempts to load all cogs
+        
+        Prints any cogs that failed to load in terminal
         """
         await self.wait_until_ready()
         await asyncio.sleep(1)
@@ -109,7 +112,8 @@ class Bot(commands.Bot):
                 "cogs.rolemanager",
                 "cogs.database",
                 "cogs.everyone",
-                "cogs.nodewar"]
+                "cogs.nodewar",
+                "cogs.twitch"]
 
         for extension in cogs:
             try:
